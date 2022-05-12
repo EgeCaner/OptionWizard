@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 * @author Ege Caner
  */
 interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
-
+    
     enum AssetTypes { ERC20, ERC721, ERC1155 }
 
     struct OptionDetails{
@@ -18,6 +18,12 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
         address counterAsset;
         address premiumAsset; 
         address listAsset;
+        address initiator;
+        address participant;
+        uint indexOfColleteral;
+        uint indexOfCounter;
+        uint indexOfPremium;
+        uint indexOfListAsset;
         uint amountOfColleteral;
         uint amountOfCA;
         uint premiumAmount; 
@@ -25,9 +31,11 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
         uint optionExpiry;
         uint listAmount;
         bool isListed;
+        bool exercised;
         AssetTypes colleteralType;
         AssetTypes counterAssetType;
         AssetTypes listAssetType;
+        AssetTypes premiumAssetType;
     }
 
     event Offer(
@@ -78,23 +86,23 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
     * @notice publish an offer for the option contract
     * @dev locks the colleteral, save the OptionSpecs to mapping with optionId and emits OfferEvent
     * @param colleteral Address of colleteral asset, counterAsset Address of counter asset, 
-    * premiumAsset Address of premium asset, amountOfColleteral Amount of colleteral to be locked and promised,
-    * amountOfCA Amount of counter asset that initiator is willing to receive,
-    * premiumAmount Amount of asset that option seller wants to receive as premium
-    * offerEnd Block timestamp where validity of the offer expires
-    * optionExpiry Block timestamp where option expires
-    * assetType Is standart of asset, if ERC20 this func should be directly call after approve else receive hooks will handle with calldata params and calls _offerOption
+    * @param premiumAsset Address of premium asset, amountOfColleteral Amount of colleteral to be locked and promised,
+    * @param amountOfCA Amount of counter asset that initiator is willing to receive,
+    * @param premiumAmount Amount of asset that option seller wants to receive as premium
+    * @param offerEnd Block timestamp where validity of the offer expires
+    * @param optionExpiry Block timestamp where option expires
     */
     function offerOption(
         address colleteral,
         address counterAsset,
         address premiumAsset, 
-        uint amountOfColleteral, 
-        uint amountOfCA, 
+        uint amountOfColleteral,
+        uint indexOfCA, 
+        uint amountOfCA,
+        uint indexOfPremium, 
         uint premiumAmount, 
         uint offerEnd,
-        uint optionExpiry,
-        AssetTypes assetType
+        uint optionExpiry
         ) 
         external;
     

@@ -6,6 +6,15 @@ import { it } from "mocha";
 import { OpWiz } from "../typechain/OpWiz";
 import { SimpleERC721 } from "../typechain/SimpleERC721";
 import { SimpleERC1155 } from "../typechain/SimpleERC1155";
+
+
+const stringToBytes = (str: string): number[] => {
+    return str.split('').map((x) => x.charCodeAt(0));
+  };
+
+function stringToBytesUTF8(str: string): number[] {
+    return stringToBytes(encodeURIComponent(str));
+  }
  
 describe("onERC721Received & onERC1155Received hooks", function () {
 
@@ -37,7 +46,7 @@ describe("onERC721Received & onERC1155Received hooks", function () {
     describe("Mint and transfer ERC1155 to SC with receiverHook", function (){
         it("Should mint nft & Should recieve from hook",  async () =>{
             await expect(erc1155.mint(wallet.address, 1, 5)).to.emit(erc1155, "TransferSingle").withArgs(wallet.address, ethers.constants.AddressZero, wallet.address, 1, 5);
-            let tx = await erc1155.safeTransferFrom(wallet.address, receiver.address, 1, 3, ethers.constants.HashZero);
+            let tx = await erc1155.safeTransferFrom(wallet.address, receiver.address, 1, 3, stringToBytesUTF8("Exercise"));
             (await tx).wait(1);
             expect(await erc1155.balanceOf(receiver.address, 1)).to.equal(3);
         });
