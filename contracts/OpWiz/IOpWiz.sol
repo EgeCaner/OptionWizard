@@ -64,7 +64,7 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
         uint indexed optionId
     );
 
-    event List(
+    event Listed(
         uint optionId,
         bool isListed
     );
@@ -84,6 +84,12 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
     event WithdrawColleteral(
         address to,
         uint optionId,
+        uint amount
+    );
+
+    event Withdraw(
+        address asset,
+        address to,
         uint amount
     );
 
@@ -165,5 +171,16 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
     * @param optionId ID of the option
     */
     function buyOption(uint optionId) external;
+
+    /**
+    * @notice withdraw the amount that seller of the option should receive
+    * @dev transfer the token that option seller should receive
+    * @param asset Address of the token to receive
+    * @param amount Amount of thw token received
+    */
+    function withdraw(
+        address asset,
+        uint index,
+        uint amount) external;
 
 }
