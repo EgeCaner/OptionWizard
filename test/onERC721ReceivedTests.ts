@@ -6,15 +6,7 @@ import { it } from "mocha";
 import { OpWiz } from "../typechain/OpWiz";
 import { SimpleERC721 } from "../typechain/SimpleERC721";
 import { SimpleERC1155 } from "../typechain/SimpleERC1155";
-
-
-const stringToBytes = (str: string): number[] => {
-    return str.split('').map((x) => x.charCodeAt(0));
-  };
-
-function stringToBytesUTF8(str: string): number[] {
-    return stringToBytes(encodeURIComponent(str));
-  }
+import { stringToBytesUTF8 }from "../utils/bytesHelper";
  
 describe("onERC721Received & onERC1155Received hooks", function () {
 
@@ -22,7 +14,7 @@ describe("onERC721Received & onERC1155Received hooks", function () {
 
     beforeEach(async function (){
 
-       ;[wallet, other]= await (ethers as any).getSigners();
+       [wallet, other]= await (ethers as any).getSigners();
        const ERC721 = await ethers.getContractFactory("SimpleERC721");
        erc721 = (await ERC721.deploy("test","TST")) as SimpleERC721;
        await erc721.deployed();
@@ -46,8 +38,11 @@ describe("onERC721Received & onERC1155Received hooks", function () {
     describe("Mint and transfer ERC1155 to SC with receiverHook", function (){
         it("Should mint nft & Should recieve from hook",  async () =>{
             await expect(erc1155.mint(wallet.address, 1, 5)).to.emit(erc1155, "TransferSingle").withArgs(wallet.address, ethers.constants.AddressZero, wallet.address, 1, 5);
-            let tx = await erc1155.safeTransferFrom(wallet.address, receiver.address, 1, 3, stringToBytesUTF8("Exercise"));
-            (await tx).wait(1);
+            let abiCoder = ethers.utils.defaultAbiCoder;
+            let setOptionParamsInfo = abiCoder.encode(["uint8","uint", "uint", "uint", "uint", "uint"],[5, 30000, 50000, 3000, 2000, 1000]);
+            console.log(`ts: ${setOptionParamsInfo}`);
+            let tx = await erc1155.safeTransferFrom(wallet.address, receiver.address, 1, 3, setOptionParamsInfo);
+            await tx.wait(1);
             expect(await erc1155.balanceOf(receiver.address, 1)).to.equal(3);
         });
     });

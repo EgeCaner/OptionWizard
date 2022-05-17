@@ -6,18 +6,11 @@ import { OpWiz } from "../typechain/OpWiz";
 import { SimpleERC721 } from "../typechain/SimpleERC721";
 import { SimpleERC1155 } from "../typechain/SimpleERC1155";
 import  { SimpleERC20 } from "../typechain/SimpleERC20";
-
-const stringToBytes = (str: string): number[] => {
-    return str.split('').map((x) => x.charCodeAt(0));
-  };
-
-function stringToBytesUTF8(str: string): number[] {
-    return stringToBytes(encodeURIComponent(str));
-  }
  
 describe("OpWiz Tests", function () {
 
-    let wallet: Wallet, acc1: Wallet, acc2: Wallet, erc20_t1: SimpleERC20, erc20_t2: SimpleERC20, erc721: SimpleERC721, erc1155: SimpleERC1155 , opWiz: OpWiz;
+    let wallet: Wallet, acc1: Wallet, acc2: Wallet, erc20_t1: SimpleERC20,
+     erc20_t2: SimpleERC20, erc721: SimpleERC721, erc1155: SimpleERC1155 , opWiz: OpWiz;
 
     beforeEach(async function (){
 
@@ -113,10 +106,11 @@ describe("OpWiz Tests", function () {
 
         beforeEach(async () => {
           await expect(opWiz.connect(wallet).withdrawPremium(1)).to.be.revertedWith("D12");
-          erc20_t1.connect(acc1).approve(opWiz.address, 3000);
+          await erc20_t1.connect(acc1).approve(opWiz.address, 3000);
           expect(await opWiz.connect(acc1).participateOption(1)).to.emit(opWiz, "Participate").withArgs(acc1.address, 1);
           let optionInfo  = await opWiz.options(1);
           expect(optionInfo.participant).to.equal(acc1.address);
+          await erc20_t1.connect(wallet).approve(opWiz.address, 3000);
           await expect(opWiz.connect(wallet).participateOption(1)).to.be.revertedWith("D13");
           expect((await opWiz.options(1)).amountOfColleteral).to.equal(50000);
           expect(await erc20_t1.balanceOf(opWiz.address)).to.equal(53000);
