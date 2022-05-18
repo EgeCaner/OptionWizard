@@ -173,11 +173,10 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         OnlyInitiator(msg.sender, optionId) 
         OfferPeriod(optionId, false) 
     {
-        require(options[optionId].participant == address(0) || 
+        require((options[optionId].participant == address(0) || 
         (optionDetails[optionId].optionExpiry < block.timestamp && 
-        optionDetails[optionId].exercised), "D4");
-        _transferColleteral(msg.sender, optionId);
-        
+        !optionDetails[optionId].exercised)), "D4");
+        _transferColleteral(msg.sender, optionId);    
     }
 
     /**
@@ -326,30 +325,17 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         emit Withdraw(asset, msg.sender, amount);
         }
 
-    /**
-        modes:
-        - 1 : SetOptionParams
-        - 2 : Participate
-        - 3 : Buy Option
-        - 4 : Exercise Option
-    */
+
     function onERC721Received(
             address operator,
             address from,
             uint256 tokenId,
             bytes calldata data
         ) external virtual override returns (bytes4){
-            //_handleTokenReceive(operator, from, tokenId, 0, data, true); 
-            console.log("receivedERC721");
+            _handleTokenReceive(operator, from, tokenId, 1, data, true); 
             return this.onERC721Received.selector;
         }
-    /**
-        modes:
-        - 1 : SetOptionParams
-        - 2 : Participate
-        - 3 : Buy Option
-        - 4 : Exercise Option
-    */
+
     function onERC1155Received(
         address operator,
         address from,
@@ -358,8 +344,7 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         bytes calldata data
         ) external virtual override returns (bytes4)
     {   
-       _handleTokenReceive(operator, from, id, value, data, false); 
-        console.log("receivedERC1155");
+       _handleTokenReceive(operator, from, id, value, data, false);
         return this.onERC1155Received.selector;
     }
 
@@ -370,6 +355,7 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         uint256[] calldata values,
         bytes calldata data
     ) external virtual override returns (bytes4){
+        revert("Does not implement ERC1155BatchReceive");
         return this.onERC1155BatchReceived.selector;
     }
 
@@ -468,7 +454,11 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         emit Exercise(to, optionId);
     }
 
-    function _buyOption(address to, uint optionId) internal OptionExists(optionId) Expired(optionId, false){
+    function _buyOption(address to, uint optionId) 
+        internal 
+        OptionExists(optionId) 
+        Expired(optionId, false)
+    {
         require(optionDetails[optionId].isListed, "D14");
         withdrawAllowance[optionDetails[optionId].listAsset][options[optionId].participant] += optionDetails[optionId].listAmount;
         emit Transfer(options[optionId].participant, to, optionId);
@@ -476,6 +466,13 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         delistOption(optionId);
     }
 
+    /**
+        modes:
+        - 1 : SetOptionParams
+        - 2 : Participate
+        - 3 : Buy Option
+        - 4 : Exercise Option
+    */
     function _handleTokenReceive(   
         address operator,
         address from,
@@ -484,41 +481,40 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         bytes calldata data,
         bool check) internal 
     {   
-        console.log("in the  handle token");
-        uint8 mode = abi.decode(data[:33], (uint8));
-        console.log("in the  handle token");
-        console.log(mode);
-        
+        uint8 mode = abi.decode(data[:32], (uint8));     
         if(mode == 1) {
+            //console.log("mode: 1");
             (uint optionId,
             uint amountOfCA, 
             uint premiumAmount, 
             uint optionExpiry, 
-            uint offerEnd)  = abi.decode(data[33:], (uint , uint, uint, uint, uint));
+            uint offerEnd)  = abi.decode(data[32:], (uint , uint, uint, uint, uint));
             require(msg.sender == options[optionId].colleteral, "D19");
             require(id == options[optionId].indexOfColleteral, "D22");
-            _setOptionParams(operator ,optionId, value, amountOfCA, premiumAmount, optionExpiry, offerEnd);
+            _setOptionParams(operator, optionId, value, amountOfCA, premiumAmount, optionExpiry, offerEnd);
         } else if(mode == 2) {
-            uint optionId= abi.decode(data[33:], (uint));
+            console.log("mode: 2");
+            uint optionId= abi.decode(data[32:], (uint));
             require(msg.sender == options[optionId].premiumAsset, "D19");
             require(check || options[optionId].premiumAmount >= value, "D20");
             require(id == options[optionId].indexOfPremium, "D22");
             _participateOption(operator ,optionId);
         } else if(mode == 3) {
-            uint optionId= abi.decode(data[33:], (uint));
+            //console.log("mode: 3");
+            uint optionId= abi.decode(data[32:], (uint));
             require(msg.sender == optionDetails[optionId].listAsset, "D19");
             require(check || optionDetails[optionId].listAmount >= value, "D20");
             require(id == optionDetails[optionId].indexOfListAsset, "D22");
             _buyOption(operator, optionId);
         } else if(mode == 4) {
-            uint optionId= abi.decode(data[33:], (uint));
+            console.log("mode: 4");
+            uint optionId= abi.decode(data[32:], (uint));
             require(msg.sender == options[optionId].counterAsset, "D19");
             require(check || options[optionId].amountOfCA >= value, "D20");
             require(id == options[optionId].indexOfCounter, "D22");
             _exerciseOption(operator ,optionId);
         } else {
-            //revert("D21");
-            console.log("else statement");
+            revert("D21");
         }
     }        
 }

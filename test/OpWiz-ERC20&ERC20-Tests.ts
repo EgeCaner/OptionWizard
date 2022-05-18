@@ -7,7 +7,7 @@ import { SimpleERC721 } from "../typechain/SimpleERC721";
 import { SimpleERC1155 } from "../typechain/SimpleERC1155";
 import  { SimpleERC20 } from "../typechain/SimpleERC20";
  
-describe("OpWiz Tests", function () {
+describe("OpWiz Tests ERC20&ERC20 options", function () {
 
     let wallet: Wallet, acc1: Wallet, acc2: Wallet, erc20_t1: SimpleERC20,
      erc20_t2: SimpleERC20, erc721: SimpleERC721, erc1155: SimpleERC1155 , opWiz: OpWiz;
@@ -36,7 +36,7 @@ describe("OpWiz Tests", function () {
        //console.log(`Address of owner: ${wallet.address}\nAddress of other: ${acc1.address}\nAddress of ERC20-1: ${erc20_t1.address}\nAddress of ERC20-2: ${erc20_t2.address}\nAddress of ERC721: ${erc721.address}\nAddress of ERC1155: ${erc1155.address}\nAddress of OpWiz: ${opWiz.address}`)
     });
 
-    describe ("OfferOption", function() {
+    describe ("OfferOption with ERC20 colleteral", function() {
         it("OfferOption ERC20 to ERC20 with ERC20 premium", async () => {
           expect( await opWiz.offerOption(erc20_t1.address, erc20_t2.address, erc20_t1.address, 0, 0 ,0)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, false);
           let tx = await erc20_t1.approve(opWiz.address, 50000);
