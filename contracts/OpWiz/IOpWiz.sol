@@ -145,7 +145,8 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
     */
      function listOption(
         uint optionId, 
-        address asset, 
+        address asset,
+        uint indexOfAsset, 
         uint amount
         ) 
         external;

@@ -11,7 +11,7 @@ import { moveBlocks } from "../utils/move-blocks";
 describe("OpWiz Tests: Options with multiple ERC standarts", function () {
 
     let wallet: Wallet, acc1: Wallet, acc2: Wallet, erc20_t1: SimpleERC20,
-     erc20_t2: SimpleERC20, erc721: SimpleERC721, erc1155: SimpleERC1155 , opWiz: OpWiz;
+     erc20_t2: SimpleERC20, erc721: SimpleERC721, erc1155: SimpleERC1155 , opWiz: OpWiz, abiCoder = ethers.utils.defaultAbiCoder;
 
     beforeEach(async function (){
 
@@ -41,7 +41,6 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
           
         it("OfferOption ERC721 to ERC20 with ERC20 premium", async () => {
           expect(await opWiz.offerOption(erc721.address, erc20_t2.address, erc20_t1.address, 1, 0 ,0)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, false);
-          let abiCoder = ethers.utils.defaultAbiCoder;
           let setOptionParamsInfo = abiCoder.encode(["uint8", "uint", "uint", "uint", "uint", "uint"], [1, 1, 50000, 3000, 2000, 1000]);
           expect(await erc721.connect(wallet)["safeTransferFrom(address,address,uint256,bytes)"](wallet.address, opWiz.address, 1, setOptionParamsInfo)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, true);
           expect(await erc721.balanceOf(opWiz.address)).to.equal(1);
@@ -55,7 +54,6 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
 
         it("OfferOption ERC721 to ERC721 with ERC20 premium", async () => {
           expect(await opWiz.offerOption(erc721.address, erc721.address, erc20_t1.address, 1, 2 ,0)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, false);
-          let abiCoder = ethers.utils.defaultAbiCoder;
           let setOptionParamsInfo = abiCoder.encode(["uint8", "uint", "uint", "uint", "uint", "uint"], [1, 1, 50000, 3000, 2000, 1000]);
           expect(await erc721.connect(wallet)["safeTransferFrom(address,address,uint256,bytes)"](wallet.address, opWiz.address, 1, setOptionParamsInfo)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, true);
           expect(await erc721.balanceOf(opWiz.address)).to.equal(1);
@@ -69,7 +67,6 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
 
         it("OfferOption ERC721 to ERC1155 with ERC20 premium", async () => {
           expect(await opWiz.offerOption(erc721.address, erc1155.address, erc20_t1.address, 1, 2 ,0)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, false);
-          let abiCoder = ethers.utils.defaultAbiCoder;
           let setOptionParamsInfo = abiCoder.encode(["uint8", "uint", "uint", "uint", "uint", "uint"], [1, 1, 50000, 3000, 2000, 1000]);
           expect(await erc721.connect(wallet)["safeTransferFrom(address,address,uint256,bytes)"](wallet.address, opWiz.address, 1, setOptionParamsInfo)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, true);
           expect(await erc721.balanceOf(opWiz.address)).to.equal(1);
@@ -93,7 +90,6 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
       }); 
       it("Participate ERC721 colleteral, ERC20 counter asset&ERC20 premium", async () => {
         expect(await opWiz.offerOption(erc721.address, erc20_t2.address, erc20_t1.address, 1, 0 ,0)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, false);
-        let abiCoder = ethers.utils.defaultAbiCoder;
         let setOptionParamsInfo = abiCoder.encode(["uint8", "uint", "uint", "uint", "uint", "uint"], [1, 1, 50000, 3000, 2000, 1000]);
         expect(await erc721.connect(wallet)["safeTransferFrom(address,address,uint256,bytes)"](wallet.address, opWiz.address, 1, setOptionParamsInfo)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, true);
         expect(await erc721.balanceOf(opWiz.address)).to.equal(1);
@@ -113,7 +109,6 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
       it("Participate ERC721 colleteral, ERC20 counter asset&ERC721 premium", async () => {
         await expect(erc721.mint(wallet.address, 2)).to.emit(erc721, 'Transfer').withArgs(ethers.constants.AddressZero, wallet.address, 2);
         expect(await opWiz.offerOption(erc721.address, erc20_t2.address, erc721.address, 1, 0 ,2)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, false);
-        let abiCoder = ethers.utils.defaultAbiCoder;
         let setOptionParamsInfo = abiCoder.encode(["uint8", "uint", "uint", "uint", "uint", "uint"], [1, 1, 50000, 1, 2000, 1000]);
         expect(await erc721.connect(wallet)["safeTransferFrom(address,address,uint256,bytes)"](wallet.address, opWiz.address, 1, setOptionParamsInfo)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, true);
         expect(await erc721.balanceOf(opWiz.address)).to.equal(1);
@@ -140,7 +135,6 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
 
       it("Participate ERC721 colleteral, ERC20 counter asset&ERC1155 premium", async () => {
         expect(await opWiz.offerOption(erc721.address, erc20_t2.address, erc1155.address, 1, 0 ,1)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, false);
-        let abiCoder = ethers.utils.defaultAbiCoder;
         let setOptionParamsInfo = abiCoder.encode(["uint8", "uint", "uint", "uint", "uint", "uint"], [1, 1, 50000, 1, 2000, 1000]);
         expect(await erc721.connect(wallet)["safeTransferFrom(address,address,uint256,bytes)"](wallet.address, opWiz.address, 1, setOptionParamsInfo)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, true);
         expect(await erc721.balanceOf(opWiz.address)).to.equal(1);
@@ -167,7 +161,6 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
 
       it("Option expires and refund colleteral", async () => {
         expect(await opWiz.offerOption(erc721.address, erc20_t2.address, erc1155.address, 1, 0 ,1)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, false);
-        let abiCoder = ethers.utils.defaultAbiCoder;
         let setOptionParamsInfo = abiCoder.encode(["uint8", "uint", "uint", "uint", "uint", "uint"], [1, 1, 50000, 1, 2000, 1000]);
         expect(await erc721.connect(wallet)["safeTransferFrom(address,address,uint256,bytes)"](wallet.address, opWiz.address, 1, setOptionParamsInfo)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, true);
         expect(await erc721.balanceOf(opWiz.address)).to.equal(1);
@@ -199,6 +192,62 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
         expect(await  erc721.balanceOf(wallet.address)).to.equal(0);
         expect(await opWiz.connect(wallet).refundColleteral(1)).to.emit(opWiz, "WithdrawColleteral").withArgs(wallet.address, 1, 1);
         expect(await  erc721.balanceOf(wallet.address)).to.equal(1);
+      });
+
+      describe("Lists the option and buyer buys the option", function(){
+        beforeEach(async function(){
+          expect(await opWiz.offerOption(erc721.address, erc20_t2.address, erc1155.address, 1, 0 ,1)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, false);
+          let setOptionParamsInfo = abiCoder.encode(["uint8", "uint", "uint", "uint", "uint", "uint"], [1, 1, 50000, 1, 2000, 1000]);
+          expect(await erc721.connect(wallet)["safeTransferFrom(address,address,uint256,bytes)"](wallet.address, opWiz.address, 1, setOptionParamsInfo)).to.emit(opWiz, "Offer").withArgs(wallet.address, 1, true);
+          expect(await erc721.balanceOf(opWiz.address)).to.equal(1);
+          expect((await opWiz.options(1)).amountOfCA).to.equal(50000);
+          expect((await opWiz.options(1)).premiumAmount).to.equal(1);
+          expect((await opWiz.options(1)).amountOfColleteral).to.equal(1);
+          expect((await opWiz.optionDetails(1)).counterAssetType).to.equal(0);
+          expect((await opWiz.optionDetails(1)).premiumAssetType).to.equal(2);
+          expect((await opWiz.optionDetails(1)).colleteralType).to.equal(1);
+          await erc1155.connect(wallet).safeTransferFrom(wallet.address, acc1.address, 1, 1, ethers.constants.AddressZero);
+          await expect(opWiz.connect(wallet).refundColleteral(1)).to.revertedWith("Offer not expired yet!");
+          let  participateOptionInfo = abiCoder.encode(["uint8", "uint"], [2, 1]);
+          expect(await erc1155.connect(acc1).safeTransferFrom(acc1.address, opWiz.address, 1, 1, participateOptionInfo)).to.emit(opWiz, "Offer").withArgs(acc1.address, 1, true);
+          expect((await opWiz.options(1)).participant).to.equal(acc1.address);
+        });
+        
+        it("lists&buys option in secondary market where list asset is erc721",async ()=>{
+          await expect(erc721.mint(acc2.address, 2)).to.emit(erc721, 'Transfer').withArgs(ethers.constants.AddressZero, acc2.address, 2);
+          await expect(opWiz.connect(wallet).listOption(1, erc721.address, 2, 1)).to.revertedWith("D3");
+          expect(await opWiz.connect(acc1).listOption(1, erc721.address, 2, 1)).to.emit(opWiz, "Listed").withArgs(1, true);
+          let buyParams = abiCoder.encode(["uint8", "uint"], [3, 1]);
+          expect(await erc721.connect(acc2)["safeTransferFrom(address,address,uint256,bytes)"](acc2.address, opWiz.address, 2, buyParams)).to.emit(opWiz, "Transfer").withArgs(acc1.address, acc2.address, 1);
+          expect((await opWiz.options(1)).participant).to.equal(acc2.address);
+          expect(await erc721.balanceOf(opWiz.address)).to.equal(2);
+          expect(await opWiz.connect(acc1).withdraw(erc721.address, 2, 1)).to.emit(opWiz, "Withdraw").withArgs(erc721.address, acc1.address, 1);
+          await expect(opWiz.connect(acc2).delistOption(1)).to.revertedWith("D7");
+          await expect(opWiz.connect(acc1).delistOption(1)).to.revertedWith("D3");
+        });
+
+        it("lists&buys option in secondary market where list asset is erc20",async ()=>{
+          await expect(opWiz.connect(wallet).listOption(1, erc20_t1.address, 0, 15000)).to.revertedWith("D3");
+          expect(await opWiz.connect(acc1).listOption(1, erc20_t1.address, 0, 15000)).to.emit(opWiz, "Listed").withArgs(1, true);
+          await erc20_t1.connect(wallet).transfer(acc2.address, 15000);
+          await erc20_t1.connect(acc2).approve(opWiz.address, 15000);
+          expect(await opWiz.connect(acc2).buyOption(1)).to.emit(opWiz, "Transfer").withArgs(acc1.address,  acc2.address, 1);
+          expect((await opWiz.options(1)).participant).to.equal(acc2.address);
+          expect(await opWiz.connect(acc1).withdraw(erc20_t1.address, 0,  15000)).to.emit(opWiz, "Withdraw").withArgs(erc20_t1.address, acc1.address, 15000);
+        });
+
+        it("lists&buys option in secondary market where list asset is erc1155",async ()=>{
+          await expect(opWiz.connect(wallet).listOption(1, erc1155.address, 1, 4)).to.revertedWith("D3");
+          expect(await opWiz.connect(acc1).listOption(1, erc1155.address, 1, 4)).to.emit(opWiz, "Listed").withArgs(1, true);
+          await erc1155.connect(wallet).safeTransferFrom(wallet.address, acc2.address, 1, 4, ethers.constants.AddressZero);
+          let buyParams = abiCoder.encode(["uint8", "uint"], [3, 1]);
+          await expect(erc1155.connect(acc2).safeTransferFrom(acc2.address, opWiz.address, 1, 3, buyParams)).to.revertedWith("D20");
+          expect(await erc1155.connect(acc2).safeTransferFrom(acc2.address, opWiz.address, 1, 4, buyParams)).to.emit(opWiz, "Transfer").withArgs(acc1.address, acc2.address, 4);
+          expect((await opWiz.options(1)).participant).to.equal(acc2.address);
+          expect(await opWiz.connect(acc1).withdraw(erc1155.address, 1, 4)).to.emit(opWiz, "Withdraw").withArgs(erc20_t1.address, acc1.address, 4);
+          expect(await erc1155.balanceOf(acc1.address, 1)).to.equal(4);
+          expect(await erc1155.balanceOf(acc2.address, 1)).to.equal(0);
+        });
       });
   });
 });

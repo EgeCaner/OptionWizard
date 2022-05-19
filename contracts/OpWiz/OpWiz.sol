@@ -228,6 +228,7 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
     function listOption(
         uint optionId, 
         address asset, 
+        uint indexOfAsset,
         uint amount
         ) 
         external 
@@ -240,6 +241,7 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         optionDetails[optionId].isListed = true;
         optionDetails[optionId].listAsset = asset;
         optionDetails[optionId].listAmount = amount;
+        optionDetails[optionId].indexOfListAsset = indexOfAsset;
         optionDetails[optionId].listAssetType = _determineERCStandart(asset);
         emit Listed(optionId, true);
     }
@@ -247,12 +249,8 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
     function delistOption(uint optionId) 
         public 
         override 
-        OptionExists(optionId) 
-        OnlyParticipant(msg.sender, optionId) 
     {
-        require(optionDetails[optionId].isListed, "D7");
-        optionDetails[optionId].isListed = false;
-        emit Listed(optionId, false);
+        _delistOption(msg.sender, optionId);
     }
 
     function withdrawCA(uint optionId) 
@@ -463,8 +461,18 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         withdrawAllowance[optionDetails[optionId].listAsset][options[optionId].participant] += optionDetails[optionId].listAmount;
         emit Transfer(options[optionId].participant, to, optionId);
         options[optionId].participant = to;
-        delistOption(optionId);
+        _delistOption(to ,optionId);
     }
+
+    function _delistOption(address participant, uint optionId) 
+        internal
+        OptionExists(optionId) 
+        OnlyParticipant(participant, optionId) 
+    {
+        require(optionDetails[optionId].isListed, "D7");
+        optionDetails[optionId].isListed = false;
+        emit Listed(optionId, false);
+    }    
 
     /**
         modes:
@@ -481,9 +489,8 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         bytes calldata data,
         bool check) internal 
     {   
-        uint8 mode = abi.decode(data[:32], (uint8));     
+        uint8 mode = abi.decode(data[:32], (uint8));   
         if(mode == 1) {
-            //console.log("mode: 1");
             (uint optionId,
             uint amountOfCA, 
             uint premiumAmount, 
@@ -493,24 +500,22 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
             require(id == options[optionId].indexOfColleteral, "D22");
             _setOptionParams(operator, optionId, value, amountOfCA, premiumAmount, optionExpiry, offerEnd);
         } else if(mode == 2) {
-            console.log("mode: 2");
             uint optionId= abi.decode(data[32:], (uint));
             require(msg.sender == options[optionId].premiumAsset, "D19");
-            require(check || options[optionId].premiumAmount >= value, "D20");
+            require(check || options[optionId].premiumAmount <= value, "D20");
             require(id == options[optionId].indexOfPremium, "D22");
             _participateOption(operator ,optionId);
         } else if(mode == 3) {
-            //console.log("mode: 3");
             uint optionId= abi.decode(data[32:], (uint));
             require(msg.sender == optionDetails[optionId].listAsset, "D19");
-            require(check || optionDetails[optionId].listAmount >= value, "D20");
+            require(check || optionDetails[optionId].listAmount <= value, "D20");
             require(id == optionDetails[optionId].indexOfListAsset, "D22");
             _buyOption(operator, optionId);
         } else if(mode == 4) {
             console.log("mode: 4");
             uint optionId= abi.decode(data[32:], (uint));
             require(msg.sender == options[optionId].counterAsset, "D19");
-            require(check || options[optionId].amountOfCA >= value, "D20");
+            require(check || options[optionId].amountOfCA <= value, "D20");
             require(id == options[optionId].indexOfCounter, "D22");
             _exerciseOption(operator ,optionId);
         } else {
