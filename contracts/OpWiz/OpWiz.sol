@@ -37,7 +37,7 @@ import "hardhat/console.sol";
 * D24 : Does not implement ERC1155BatchReceive
 */
 
-contract OpWiz is ERC165, IOpWiz{
+contract OpWiz is ERC165, IOpWiz {
     using Counters for Counters.Counter;
     using Address for address;
 
@@ -120,21 +120,21 @@ contract OpWiz is ERC165, IOpWiz{
         rejectZeroAddress(counterAsset)
         rejectZeroAddress(premiumAsset)
     {
-            counter.increment();
-            uint index = counter.current();
-            options[index].colleteral  = colleteral;
-            Option storage option = options[index];
-            OptionDetails storage optionDetail = optionDetails[index];
-            option.counterAsset = counterAsset;
-            option.premiumAsset = premiumAsset;
-            option.indexOfColleteral = indexOfColleteral;
-            option.indexOfCounter = indexOfCA;
-            option.indexOfPremium = indexOfPremium;
-            option.initiator = msg.sender;
-            optionDetail.colleteralType = _determineERCStandart(colleteral);
-            optionDetail.counterAssetType = _determineERCStandart(counterAsset);
-            optionDetail.premiumAssetType = _determineERCStandart(premiumAsset);
-            emit Offer(msg.sender, index, false);
+        counter.increment();
+        uint index = counter.current();
+        options[index].colleteral  = colleteral;
+        Option storage option = options[index];
+        OptionDetails storage optionDetail = optionDetails[index];
+        option.counterAsset = counterAsset;
+        option.premiumAsset = premiumAsset;
+        option.indexOfColleteral = indexOfColleteral;
+        option.indexOfCounter = indexOfCA;
+        option.indexOfPremium = indexOfPremium;
+        option.initiator = msg.sender;
+        optionDetail.colleteralType = _determineERCStandart(colleteral);
+        optionDetail.counterAssetType = _determineERCStandart(counterAsset);
+        optionDetail.premiumAssetType = _determineERCStandart(premiumAsset);
+        emit Offer(msg.sender, index, false);
     }
     
     function setOptionParams(
@@ -528,7 +528,7 @@ contract OpWiz is ERC165, IOpWiz{
         }
     }   
     
-   function _determineERCStandart(address addr) internal view returns (uint8){
+    function _determineERCStandart(address addr) internal view returns (uint8){
         if (addr.isContract()) {
             if (_isSupportsInterface(addr, ERC1155_INTERFACE_ID)) {
                 return uint8(AssetTypes.ERC1155);
@@ -541,5 +541,4 @@ contract OpWiz is ERC165, IOpWiz{
             revert("Address is not a contract");
         }
     }
-
 }
