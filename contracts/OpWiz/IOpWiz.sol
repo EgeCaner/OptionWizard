@@ -14,7 +14,6 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
     enum AssetTypes { ERC20, ERC721, ERC1155 }
 
     struct Option { 
-
         address initiator;
         address participant;
         address colleteral;
@@ -99,14 +98,14 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
     * @param colleteral Address of colleteral asset, counterAsset Address of counter asset, 
     * @param premiumAsset Address of premium asset, amountOfColleteral Amount of colleteral to be locked and promised
     */
-  function offerOption(
-       address colleteral,
+    function offerOption(
+        address colleteral,
         address counterAsset,
         address premiumAsset,
         uint indexOfColleteral, 
         uint indexOfCA, 
         uint indexOfPremium
-        ) 
+    ) 
         external;
     
     /**
@@ -143,12 +142,12 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
     * @dev sets listed field of option to true, asset address and amount in option mapping
     * @param optionId ID of the option, asset Address of the asset that seller wants to receive, amount Amount of asset
     */
-     function listOption(
+    function listOption(
         uint optionId, 
         address asset,
         uint indexOfAsset, 
         uint amount
-        ) 
+    ) 
         external;
 
     /**
@@ -182,6 +181,7 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
     function withdraw(
         address asset,
         uint index,
-        uint amount) external;
+        uint amount
+    ) external;
 
 }

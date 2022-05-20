@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -35,47 +34,43 @@ import "hardhat/console.sol";
 * D21 : Invalid mode has been selected
 * D22 : Index of the asset does not match
 * D23 : This contract does not support ERC1155 batch receive
+* D24 : Does not implement ERC1155BatchReceive
 */
 
-contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
-    
+contract OpWiz is ERC165, IOpWiz{
     using Counters for Counters.Counter;
     using Address for address;
 
-    Counters.Counter public counter;
+    Counters.Counter private counter;
 
     bytes4 public immutable  ERC721_INTERFACE_ID = 0x80ac58cd;
-
     bytes4 public immutable  ERC1155_INTERFACE_ID = 0xd9b67a26;
 
-    mapping (uint => Option) public options;
+    mapping(uint => Option) public options;
+    mapping(uint => OptionDetails) public optionDetails;
+    mapping(address => mapping(address => uint)) public withdrawAllowance;
 
-    mapping (uint => OptionDetails) public optionDetails;
-
-    mapping (address => mapping (address => uint)) withdrawAllowance;
-
-
-    modifier RejectZeroAddress(address addr) {
+    modifier rejectZeroAddress(address addr) {
         require(addr != address(0), "Transaction to address(0)!");
         _;
     }
 
-    modifier OptionExists(uint optionId) {
+    modifier optionExists(uint optionId) {
         require(options[optionId].colleteral != address(0), "Option does not exists.");
         _;
     }
 
-    modifier OnlyParticipant(address from, uint optionId) {
+    modifier onlyParticipant(address from, uint optionId) {
         require(from == options[optionId].participant, "D3");
         _;
     }
 
-    modifier OnlyInitiator(address from, uint optionId) {
+    modifier onlyInitiator(address from, uint optionId) {
         require(from == options[optionId].initiator,  "D2");
         _;
     }
 
-    modifier Participated(uint optionId, bool check) {
+    modifier participated(uint optionId, bool check) {
         if (!check){
             require(options[optionId].participant == address(0), "D13");
         } else {
@@ -84,7 +79,7 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         _;
     }
 
-    modifier OfferPeriod(uint optionId, bool check) {
+    modifier offerPeriod(uint optionId, bool check) {
         require(optionDetails[optionId].offerEnd > 0, "Option paramaters not setted yet");
         if (check){
             require(optionDetails[optionId].offerEnd >= block.timestamp, "Offer expired");
@@ -94,7 +89,7 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         _;
     }
 
-    modifier Expired(uint optionId, bool check) {
+    modifier expired(uint optionId, bool check) {
         if (check){
             require(optionDetails[optionId].optionExpiry < block.timestamp, "D8");
         } else {
@@ -118,13 +113,13 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         uint indexOfColleteral, 
         uint indexOfCA, 
         uint indexOfPremium
-        ) 
+    ) 
         external 
         override
-        RejectZeroAddress(colleteral)
-        RejectZeroAddress(counterAsset)
-        RejectZeroAddress(premiumAsset)
-        {
+        rejectZeroAddress(colleteral)
+        rejectZeroAddress(counterAsset)
+        rejectZeroAddress(premiumAsset)
+    {
             counter.increment();
             uint index = counter.current();
             options[index].colleteral  = colleteral;
@@ -140,7 +135,7 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
             optionDetail.counterAssetType = _determineERCStandart(counterAsset);
             optionDetail.premiumAssetType = _determineERCStandart(premiumAsset);
             emit Offer(msg.sender, index, false);
-        }
+    }
     
     function setOptionParams(
         uint optionId,
@@ -148,30 +143,31 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         uint amountOfCA, 
         uint premiumAmount, 
         uint optionExpiry, 
-        uint offerEnd) 
+        uint offerEnd
+    ) 
         external
     {   
         require(optionDetails[optionId].colleteralType == uint(AssetTypes.ERC20), "D6");
-        IERC20(options[optionId].colleteral).transferFrom(msg.sender, address(this), amountOfColleteral);
         _setOptionParams(msg.sender, optionId, amountOfColleteral, amountOfCA, premiumAmount, optionExpiry, offerEnd);
-        
+        IERC20(options[optionId].colleteral).transferFrom(msg.sender, address(this), amountOfColleteral);     
     }
 
-    function participateOption(uint optionId) 
-        external 
-        override
+    function participateOption(uint optionId) external override
     {
         require(optionDetails[optionId].premiumAssetType == uint(AssetTypes.ERC20), "D1");
-        IERC20(options[optionId].premiumAsset).transferFrom(msg.sender, address(this), options[optionId].premiumAmount);
         _participateOption(msg.sender, optionId);
+        IERC20(options[optionId].premiumAsset).transferFrom(
+            msg.sender, 
+            address(this),
+            options[optionId].premiumAmount
+        );   
     }
 
     function refundColleteral(uint optionId) 
         external 
         override
-        OptionExists(optionId) 
-        OnlyInitiator(msg.sender, optionId) 
-        OfferPeriod(optionId, false) 
+        onlyInitiator(msg.sender, optionId) 
+        offerPeriod(optionId, false) 
     {
         require((options[optionId].participant == address(0) || 
         (optionDetails[optionId].optionExpiry < block.timestamp && 
@@ -187,22 +183,21 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
     function withdrawPremium(uint optionId) 
         external 
         override 
-        OptionExists(optionId) 
-        OnlyInitiator(msg.sender, optionId) 
-        Participated(optionId, true)
+        onlyInitiator(msg.sender, optionId) 
+        participated(optionId, true)
     {
         require(options[optionId].premiumAmount > 0 , "D11");
         uint amount = options[optionId].premiumAmount;
         options[optionId].premiumAmount = 0;
         if (optionDetails[optionId].premiumAssetType == uint(AssetTypes.ERC20)) {
             IERC20(options[optionId].premiumAsset).transfer(msg.sender, amount);
-        } else if(optionDetails[optionId].premiumAssetType == uint(AssetTypes.ERC721)) {
+        } else if (optionDetails[optionId].premiumAssetType == uint(AssetTypes.ERC721)) {
             IERC721(options[optionId].premiumAsset).safeTransferFrom(
                 address(this), 
                 msg.sender, 
                 options[optionId].indexOfPremium
             );
-        } else if(optionDetails[optionId].premiumAssetType == uint(AssetTypes.ERC1155)) {
+        } else if (optionDetails[optionId].premiumAssetType == uint(AssetTypes.ERC1155)) {
             IERC1155(options[optionId].premiumAsset).safeTransferFrom(
                 address(this), 
                 msg.sender, 
@@ -221,8 +216,12 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         override 
     {
         require(optionDetails[optionId].counterAssetType ==  uint(AssetTypes.ERC20), "D6");
-        IERC20(options[optionId].counterAsset).transferFrom(msg.sender , address(this), options[optionId].amountOfCA);
         _exerciseOption(msg.sender ,optionId);
+        IERC20(options[optionId].counterAsset).transferFrom(
+            msg.sender, 
+            address(this), 
+            options[optionId].amountOfCA
+        );
     }
 
     function listOption(
@@ -230,12 +229,12 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         address asset, 
         uint indexOfAsset,
         uint amount
-        ) 
+    ) 
         external 
         override 
-        OptionExists(optionId) 
-        OnlyParticipant(msg.sender, optionId)
-        Expired(optionId ,false) 
+        onlyParticipant(msg.sender, optionId)
+        expired(optionId, false)
+        rejectZeroAddress(asset)
     {
         require(!optionDetails[optionId].exercised, "D7");
         optionDetails[optionId].isListed = true;
@@ -256,8 +255,7 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
     function withdrawCA(uint optionId) 
         external 
         override 
-        OptionExists(optionId) 
-        OnlyInitiator(msg.sender, optionId)  
+        onlyInitiator(msg.sender, optionId)  
     {
         require(optionDetails[optionId].exercised, "D10");
         require(options[optionId].amountOfCA > 0, "D11");
@@ -265,23 +263,24 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         options[optionId].amountOfCA = 0;
         if (optionDetails[optionId].counterAssetType == uint(AssetTypes.ERC20)) {
             IERC20(options[optionId].counterAsset).transfer(msg.sender, amount);
-        } else if(optionDetails[optionId].counterAssetType == uint(AssetTypes.ERC721)) {
+        } else if (optionDetails[optionId].counterAssetType == uint(AssetTypes.ERC721)) {
             IERC721(options[optionId].counterAsset).safeTransferFrom(
                 address(this),
                 msg.sender,
-                options[optionId].indexOfCounter);
-        } else if(optionDetails[optionId].counterAssetType == uint(AssetTypes.ERC1155)) {
+                options[optionId].indexOfCounter
+            );
+        } else if (optionDetails[optionId].counterAssetType == uint(AssetTypes.ERC1155)) {
             IERC1155(options[optionId].counterAsset).safeTransferFrom(
                 address(this), 
                 msg.sender, 
                 options[optionId].indexOfCounter, 
                 amount,
                 bytes("")
-                );
+            );
         } else {
             revert("D5");
         }
-        emit WithdrawCA(msg.sender, optionId, options[optionId].amountOfCA);
+        emit WithdrawCA(msg.sender, optionId, amount);
     }
 
     function buyOption(uint optionId) 
@@ -289,50 +288,58 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         override 
     {
         require(optionDetails[optionId].listAssetType == uint(AssetTypes.ERC20), "D6");
-        IERC20(optionDetails[optionId].listAsset).transferFrom(msg.sender, address(this), optionDetails[optionId].listAmount);
         _buyOption(msg.sender ,optionId);
+        IERC20(optionDetails[optionId].listAsset).transferFrom(
+            msg.sender, 
+            address(this), 
+            optionDetails[optionId].listAmount
+        );
     }
 
     function withdraw(
         address asset,
         uint index, 
-        uint amount) external override 
+        uint amount
+    ) 
+        external 
+        override 
     {
         require(withdrawAllowance[asset][msg.sender] >= amount, "D15");
         withdrawAllowance[asset][msg.sender] -= amount;
         uint assetType = _determineERCStandart(asset);
         if (assetType == uint(AssetTypes.ERC20)) {
             IERC20(asset).transfer(msg.sender, amount);
-        } else if(assetType == uint(AssetTypes.ERC721)) {
+        } else if (assetType == uint(AssetTypes.ERC721)) {
             IERC721(asset).safeTransferFrom(
                 address(this),
                 msg.sender,
                 index
-                );
-        } else if(assetType == uint(AssetTypes.ERC1155)) {
+            );
+        } else if (assetType == uint(AssetTypes.ERC1155)) {
             IERC1155(asset).safeTransferFrom(
                 address(this), 
                 msg.sender, 
                 index, 
                 amount,
                 bytes("")
-                );
-            } else {
-                revert("D5");
+            );
+        } else {
+            revert("D5");
         }
         emit Withdraw(asset, msg.sender, amount);
-        }
-
+    }
 
     function onERC721Received(
-            address operator,
-            address from,
-            uint256 tokenId,
-            bytes calldata data
-        ) external virtual override returns (bytes4){
-            _handleTokenReceive(operator, from, tokenId, 1, data, true); 
-            return this.onERC721Received.selector;
-        }
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    )
+        external virtual override returns (bytes4)
+    {
+        _handleTokenReceive(operator, from, tokenId, 1, data, true); 
+        return this.onERC721Received.selector;
+    }
 
     function onERC1155Received(
         address operator,
@@ -340,7 +347,8 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         uint256 id,
         uint256 value,
         bytes calldata data
-        ) external virtual override returns (bytes4)
+    ) 
+        external virtual override returns (bytes4)
     {   
        _handleTokenReceive(operator, from, id, value, data, false);
         return this.onERC1155Received.selector;
@@ -352,16 +360,18 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         uint256[] calldata ids,
         uint256[] calldata values,
         bytes calldata data
-    ) external virtual override returns (bytes4){
-        revert("Does not implement ERC1155BatchReceive");
+    ) 
+        external virtual override returns (bytes4)
+    {
+        revert("D24");
         return this.onERC1155BatchReceived.selector;
     }
 
-    function _isSupportsInterface(address addr, bytes4 interfaceId) internal returns (bool) {
+    function _isSupportsInterface(address addr, bytes4 interfaceId) internal view returns (bool) {
         if (addr.isContract()){
             try IERC165(addr).supportsInterface(interfaceId) returns (bool retval) {
                 return retval;
-            } catch (bytes memory reason) {
+            } catch {
                 return false;
                 }
         } else {
@@ -369,25 +379,11 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         }
     }
 
-    function _determineERCStandart(address addr) internal returns (uint8){
-        if (addr.isContract()){
-            if(_isSupportsInterface(addr, ERC1155_INTERFACE_ID)){
-                return uint8(AssetTypes.ERC1155);
-            } else if (_isSupportsInterface(addr, ERC721_INTERFACE_ID)){
-                return uint8(AssetTypes.ERC721);
-            } else {
-                return uint8(AssetTypes.ERC20);
-            }
-        } else {
-            revert("Address is not a contract");
-        }
-    }
-
     function _participateOption(address participator,uint optionId) 
         internal      
-        OptionExists(optionId) 
-        Participated(optionId, false) 
-        OfferPeriod(optionId, true)  
+        optionExists(optionId) 
+        participated(optionId, false) 
+        offerPeriod(optionId, true)  
     {
         options[optionId].participant = participator;
         optionDetails[optionId].offerEnd = block.timestamp;
@@ -402,11 +398,11 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         uint premiumAmount, 
         uint optionExpiry, 
         uint offerEnd
-        ) 
+    ) 
         internal 
-        OptionExists(optionId) 
-        OnlyInitiator(initiator, optionId) 
-        {
+        optionExists(optionId) 
+        onlyInitiator(initiator, optionId) 
+    {
             require(optionDetails[optionId].optionExpiry == 0, "D16");
             options[optionId].amountOfColleteral = amountOfColleteral;
             options[optionId].amountOfCA = amountOfCA;
@@ -414,37 +410,37 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
             optionDetails[optionId].optionExpiry = block.timestamp + optionExpiry;
             optionDetails[optionId].offerEnd = block.timestamp + offerEnd;
             emit Offer(initiator, optionId, true);
-        }
+    }
 
     function _transferColleteral(address to, uint optionId) internal {
         uint amount = options[optionId].amountOfColleteral;
         options[optionId].amountOfColleteral = 0;
         if (optionDetails[optionId].colleteralType == uint(AssetTypes.ERC20)) {
             IERC20(options[optionId].colleteral).transfer(to, amount);
-        } else if(optionDetails[optionId].colleteralType == uint(AssetTypes.ERC721)) {
+        } else if (optionDetails[optionId].colleteralType == uint(AssetTypes.ERC721)) {
             IERC721(options[optionId].colleteral).safeTransferFrom(
                 address(this),
                 to,
-                options[optionId].indexOfColleteral);
-        } else if(optionDetails[optionId].colleteralType == uint(AssetTypes.ERC1155)) {
+                options[optionId].indexOfColleteral
+            );
+        } else if (optionDetails[optionId].colleteralType == uint(AssetTypes.ERC1155)) {
             IERC1155(options[optionId].colleteral).safeTransferFrom(
                 address(this), 
                 to, 
                 options[optionId].indexOfColleteral, 
                 amount,
                 bytes("")
-                );
+            );
         } else {
             revert("D5");
         }
         emit WithdrawColleteral(to, optionId, amount);
     }
 
-     function _exerciseOption(address to,uint optionId) 
+    function _exerciseOption(address to,uint optionId) 
         internal 
-        OptionExists(optionId) 
-        Expired(optionId, false)
-        OnlyParticipant(to, optionId)
+        expired(optionId, false)
+        onlyParticipant(to, optionId)
     {
         require(!optionDetails[optionId].exercised, "D7");
         optionDetails[optionId].exercised = true;
@@ -454,8 +450,8 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
 
     function _buyOption(address to, uint optionId) 
         internal 
-        OptionExists(optionId) 
-        Expired(optionId, false)
+        optionExists(optionId) 
+        expired(optionId, false)
     {
         require(optionDetails[optionId].isListed, "D14");
         withdrawAllowance[optionDetails[optionId].listAsset][options[optionId].participant] += optionDetails[optionId].listAmount;
@@ -466,8 +462,7 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
 
     function _delistOption(address participant, uint optionId) 
         internal
-        OptionExists(optionId) 
-        OnlyParticipant(participant, optionId) 
+        onlyParticipant(participant, optionId) 
     {
         require(optionDetails[optionId].isListed, "D7");
         optionDetails[optionId].isListed = false;
@@ -487,10 +482,12 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
         uint256 id,
         uint256 value,
         bytes calldata data,
-        bool check) internal 
+        bool check
+    ) 
+        internal 
     {   
         uint8 mode = abi.decode(data[:32], (uint8));   
-        if(mode == 1) {
+        if (mode == 1) {
             (uint optionId,
             uint amountOfCA, 
             uint premiumAmount, 
@@ -498,28 +495,51 @@ contract OpWiz is ERC165, IERC1155Receiver, IERC721Receiver, IOpWiz{
             uint offerEnd)  = abi.decode(data[32:], (uint , uint, uint, uint, uint));
             require(msg.sender == options[optionId].colleteral, "D19");
             require(id == options[optionId].indexOfColleteral, "D22");
-            _setOptionParams(operator, optionId, value, amountOfCA, premiumAmount, optionExpiry, offerEnd);
-        } else if(mode == 2) {
+            _setOptionParams(
+                operator, 
+                optionId, 
+                value,
+                amountOfCA, 
+                premiumAmount, 
+                optionExpiry, 
+                offerEnd
+            );
+        } else if (mode == 2) {
             uint optionId= abi.decode(data[32:], (uint));
             require(msg.sender == options[optionId].premiumAsset, "D19");
             require(check || options[optionId].premiumAmount <= value, "D20");
             require(id == options[optionId].indexOfPremium, "D22");
-            _participateOption(operator ,optionId);
-        } else if(mode == 3) {
+            _participateOption(operator, optionId);
+        } else if (mode == 3) {
             uint optionId= abi.decode(data[32:], (uint));
             require(msg.sender == optionDetails[optionId].listAsset, "D19");
             require(check || optionDetails[optionId].listAmount <= value, "D20");
             require(id == optionDetails[optionId].indexOfListAsset, "D22");
             _buyOption(operator, optionId);
-        } else if(mode == 4) {
+        } else if (mode == 4) {
             console.log("mode: 4");
             uint optionId= abi.decode(data[32:], (uint));
             require(msg.sender == options[optionId].counterAsset, "D19");
             require(check || options[optionId].amountOfCA <= value, "D20");
             require(id == options[optionId].indexOfCounter, "D22");
-            _exerciseOption(operator ,optionId);
+            _exerciseOption(operator, optionId);
         } else {
             revert("D21");
         }
-    }        
+    }   
+    
+   function _determineERCStandart(address addr) internal view returns (uint8){
+        if (addr.isContract()) {
+            if (_isSupportsInterface(addr, ERC1155_INTERFACE_ID)) {
+                return uint8(AssetTypes.ERC1155);
+            } else if (_isSupportsInterface(addr, ERC721_INTERFACE_ID)) {
+                return uint8(AssetTypes.ERC721);
+            } else {
+                return uint8(AssetTypes.ERC20);
+            }
+        } else {
+            revert("Address is not a contract");
+        }
+    }
+
 }
