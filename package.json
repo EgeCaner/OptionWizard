@@ -34,11 +34,12 @@
     "typescript": "^4.6.4"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.6.0",
-    "convert-string": "^0.1.0",
+    "@aave/core-v3": "^1.13.1",
     "@appliedblockchain/chainlink-contracts": "0.0.4",
     "@appliedblockchain/chainlink-plugins-fund-link": "0.0.1",
     "@chainlink/contracts": "^0.4.0",
-    "@chainlink/test-helpers": "^0.0.7-alpha"
+    "@chainlink/test-helpers": "^0.0.7-alpha",
+    "@openzeppelin/contracts": "^4.6.0",
+    "convert-string": "^0.1.0"
   }
 }
