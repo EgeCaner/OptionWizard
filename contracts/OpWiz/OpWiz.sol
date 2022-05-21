@@ -145,7 +145,7 @@ contract OpWiz is ERC165, IOpWiz {
         uint optionExpiry, 
         uint offerEnd
     ) 
-        external
+        external override
     {   
         require(optionDetails[optionId].colleteralType == uint(AssetTypes.ERC20), "D6");
         _setOptionParams(msg.sender, optionId, amountOfColleteral, amountOfCA, premiumAmount, optionExpiry, offerEnd);

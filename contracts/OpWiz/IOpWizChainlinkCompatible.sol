@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 /**
 * @title Interface of the OptionWizard contract
 * @author Ege Caner
  */
-interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
-    
-    enum AssetTypes { ERC20, ERC721, ERC1155 }
+interface IOpWizChainlinkCompatible is IERC165, KeeperCompatibleInterface {
 
     struct Option { 
         address initiator;
@@ -19,9 +16,6 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
         address colleteral;
         address counterAsset;
         address premiumAsset;
-        uint indexOfColleteral;
-        uint indexOfCounter;
-        uint indexOfPremium; 
         uint amountOfColleteral;
         uint amountOfCA;
         uint premiumAmount; 
@@ -29,16 +23,12 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
 
     struct OptionDetails {
         address listAsset;
-        uint indexOfListAsset;
         uint offerEnd;
         uint optionExpiry;
         uint listAmount;
-        uint8 colleteralType;
-        uint8 counterAssetType;
-        uint8 listAssetType;
-        uint8 premiumAssetType;
         bool isListed;
         bool exercised;
+        address priceFeedAddress;
     }
 
     event Offer(
@@ -102,9 +92,11 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
         address colleteral,
         address counterAsset,
         address premiumAsset,
-        uint indexOfColleteral, 
-        uint indexOfCA, 
-        uint indexOfPremium
+        uint amountOfColleteral,
+        uint amountOfCA, 
+        uint premiumAmount, 
+        uint optionExpiry, 
+        uint offerEnd
     ) 
         external;
     
@@ -145,7 +137,6 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
     function listOption(
         uint optionId, 
         address asset,
-        uint indexOfAsset, 
         uint amount
     ) 
         external;
@@ -180,18 +171,9 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
     */
     function withdraw(
         address asset,
-        uint index,
         uint amount
     ) external;
 
-     function setOptionParams(
-        uint optionId,
-        uint amountOfColleteral,
-        uint amountOfCA, 
-        uint premiumAmount, 
-        uint optionExpiry, 
-        uint offerEnd
-    ) 
-        external;
+    function SetPriceFeedAddress(uint optionId, address _priceFeedAddress) external;
 
 }

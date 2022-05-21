@@ -76,6 +76,9 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
           expect((await opWiz.optionDetails(1)).counterAssetType).to.equal(2);
           expect((await opWiz.optionDetails(1)).premiumAssetType).to.equal(0);
           expect((await opWiz.optionDetails(1)).colleteralType).to.equal(1);
+          await expect(opWiz.connect(wallet).refundColleteral(1)).to.revertedWith("Offer not expired yet!");
+          await moveBlocks(1000);
+          await expect(opWiz.connect(wallet).refundColleteral(1)).to.emit(opWiz, "WithdrawColleteral").withArgs(wallet.address, 1, 1);
         });
     });
 
@@ -128,6 +131,7 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
         await expect(opWiz.connect(wallet).withdrawPremium(1)).to.emit(opWiz, "WithdrawPremium").withArgs(wallet.address, 1, 1);
         expect(await erc721.balanceOf(wallet.address)).to.equal(1);
         expect(await erc721.balanceOf(opWiz.address)).to.equal(1);
+        await expect(opWiz.connect(wallet).refundColleteral(1)).to.revertedWith("D4");
       });
 
       it("Participate ERC721 colleteral, ERC20 counter asset&ERC1155 premium & withdraw premium", async () => {
@@ -278,6 +282,11 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
         it("Should revert if expired option tries to exercised", async function(){
           await moveBlocks(2000);
           await expect(opWiz.connect(acc1).exerciseOption(1)).to.revertedWith("D9");
+        });
+
+        it("Should revert if insufficient counter asset",  async function(){
+          await erc20_t2.connect(acc1).approve(opWiz.address, 40000);
+          await expect(opWiz.connect(acc1).exerciseOption(1)).to.revertedWith("ERC20: insufficient allowance");
         });
       });
   });
