@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-
+import { developmentChains } from "../helper-hardhat-config";
 const deployFunction : DeployFunction  = async function(hre: HardhatRuntimeEnvironment){
     
     const { getNamedAccounts, deployments, network } = hre; 
@@ -11,9 +11,10 @@ const deployFunction : DeployFunction  = async function(hre: HardhatRuntimeEnvir
         from: deployer,
         args: [],
         log: true,
-        waitConfirmations: 1
+        waitConfirmations: developmentChains.includes(network.name) ? 1 : 6
     });
     console.log(`Deployed OpWizChainlinkCompatible on network: ${network.name}, and on address: ${opWizChainlinkCompatibleContract.address}`);
 }
 
 export default deployFunction;
+deployFunction.tags = ['all', 'OpWizChainlink'];

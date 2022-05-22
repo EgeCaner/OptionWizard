@@ -2,10 +2,16 @@ import { expect } from "chai";
 import { Wallet } from "ethers";
 import { ethers } from "hardhat";
 import { it } from "mocha";
-import { OpWiz } from "../typechain/OpWiz";
-import { SimpleERC721 } from "../typechain/SimpleERC721";
-import { SimpleERC1155 } from "../typechain/SimpleERC1155";
-import  { SimpleERC20 } from "../typechain/SimpleERC20";
+import { 
+  SimpleERC721__factory, 
+  SimpleERC1155__factory, 
+  SimpleERC20__factory, 
+  OpWiz__factory ,
+  SimpleERC721,
+  SimpleERC1155,
+  SimpleERC20, 
+  OpWiz
+} from "../typechain";
 import { moveBlocks } from "../utils/move-blocks";
 
 describe("OpWiz Tests: Options with multiple ERC standarts", function () {
@@ -16,10 +22,10 @@ describe("OpWiz Tests: Options with multiple ERC standarts", function () {
     beforeEach(async function (){
 
        [wallet, acc1, acc2]= await (ethers as any).getSigners();
-       const ERC721 = await ethers.getContractFactory("SimpleERC721");
-       const ERC1155 = await ethers.getContractFactory("SimpleERC1155");
-       const ERC20 = await ethers.getContractFactory("SimpleERC20");
-       const Opwiz = await ethers.getContractFactory("OpWiz");
+       const ERC721 = await ethers.getContractFactory("SimpleERC721") as SimpleERC721__factory;
+       const ERC1155 = await ethers.getContractFactory("SimpleERC1155") as SimpleERC1155__factory;
+       const ERC20 = await ethers.getContractFactory("SimpleERC20") as SimpleERC20__factory;
+       const Opwiz = await ethers.getContractFactory("OpWiz") as OpWiz__factory;
        erc721 = (await ERC721.deploy("test","TST"));
        await erc721.deployed();
        erc1155 = (await ERC1155.deploy("test"));

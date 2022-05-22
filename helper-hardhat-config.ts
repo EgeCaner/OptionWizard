@@ -1,4 +1,5 @@
 import { BigNumber } from "ethers"
+import { ethers } from "hardhat"
 
 type NetworkConfigItem = {
   name: string

@@ -96,6 +96,8 @@ contract OpWizSimple is IOpWizSimple {
         option.amountOfColleteral = amountOfColleteral;
         option.premiumAmount = premiumAmount;
         option.amountOfCA = amountOfCA;
+        optionDetails[index].offerEnd = block.timestamp + offerEnd;
+        optionDetails[index].optionExpiry = block.timestamp + optionExpiry;
         option.initiator = msg.sender;
         emit Offer(msg.sender, index, true);
     }

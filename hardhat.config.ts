@@ -48,10 +48,10 @@ const config: HardhatUserConfig = {
     },
     kovan: {
       url: KOVAN_RPC_URL,
-      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
-      //accounts: {
-      //     mnemonic: MNEMONIC,
-      // },
+      //accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
+        accounts: {
+            mnemonic: MNEMONIC,
+        },
       saveDeployments: true,
       chainId: 42,
     },
@@ -103,6 +103,15 @@ const config: HardhatUserConfig = {
     deployer: {
       default: 0, // here this will by default take the first account as deployer
       1: 0, // similarly on mainnet it will take the first account as deployer. Note though that depending on how hardhat network are configured, the account 0 on one network can be different than on another
+    },
+    initiator: {
+      default: 1,
+    },
+    participator: {
+      default: 2
+    },
+    buyer: {
+      default: 3
     },
     feeCollector: {
       default: 1,
