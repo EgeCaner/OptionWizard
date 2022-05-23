@@ -8,25 +8,35 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IPoolAddressesProvider} from "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
+import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract OpWizFlashLoanWithKeepers is IERC165, OpWizSimple ,IOpWizChainlinkCompatible, IOpWizFlashLoanSimpleReceiver {
+    mapping(address => uint) private lastBalances;
 
     IPoolAddressesProvider public override ADDRESSES_PROVIDER;
     IPool public override POOL;
 
+    modifier onlyPool(){
+        require(msg.sender == address(POOL), "Only flash-pool allowed");
+        _;
+    }
+
     function flashExercise(
         uint optionId, 
-        address flashPool, 
-        uint amount,  
+        address flashPool,   
         uint16 referralCode,
         bytes calldata params
     ) 
         external 
         onlyParticipant(msg.sender, optionId)
-    {
-       ADDRESSES_PROVIDER = IPoolAddressesProvider(flashPool);
-       POOL = IPool(ADDRESSES_PROVIDER.getPool());
-       POOL.flashLoanSimple(address(this), options[optionId].colleteral, options[optionId].amountOfColleteral, params, referralCode);
+        expired(optionId, false)
+        rejectZeroAddress(flashPool)
+    {   
+        Option storage option = options[optionId];
+        lastBalances[option.counterAsset] = _getBalance(option.counterAsset, address(this));
+        ADDRESSES_PROVIDER = IPoolAddressesProvider(flashPool);
+        POOL = IPool(ADDRESSES_PROVIDER.getPool());
+        POOL.flashLoanSimple(address(this), option.counterAsset, option.amountOfCA, params, referralCode);
     }
 
     /**
@@ -40,13 +50,48 @@ contract OpWizFlashLoanWithKeepers is IERC165, OpWizSimple ,IOpWizChainlinkCompa
    * @param params The byte-encoded params passed when initiating the flashloan
    * @return True if the execution of the operation succeeds, false otherwise
    */
-    function executeOperation(
+   function executeOperation(
         address asset,
         uint256 amount,
         uint256 premium,
         address initiator,
         bytes calldata params
-    ) external returns (bool){
+    ) external onlyPool() returns (bool){
+        //implement the arbitrage here
+        (
+            uint optionId,
+            address router,
+            uint24 fee,
+            uint256 amountOutMinimum,
+            uint160 sqrtPriceLimitX96
+        
+        ) = abi.decode(params, (uint, address, uint24, uint256, uint160));
+        uint currentBalance = _getBalance(options[optionId].counterAsset, address(this));
+        require((currentBalance - amount) >= lastBalances[options[optionId].counterAsset], "D20");
+        require(asset == options[optionId].counterAsset, "Assets does not match" );
+        require(amount >= options[optionId].amountOfCA, "D20");
+        lastBalances[options[optionId].counterAsset] = _getBalance(options[optionId].counterAsset, address(this));
+        _flashExercise(optionId);
+        uint colleteralAmount = options[optionId].amountOfColleteral;
+        options[optionId].amountOfColleteral = 0;
+        ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter.ExactInputSingleParams({
+            tokenIn: options[optionId].colleteral,
+            tokenOut: options[optionId].counterAsset, 
+            fee: fee, 
+            recipient: address(this), 
+            deadline: block.timestamp + 1, 
+            amountIn: colleteralAmount, 
+            amountOutMinimum: amountOutMinimum, 
+            sqrtPriceLimitX96: sqrtPriceLimitX96
+        });
+
+        uint debt = amount + premium;
+        uint256 receivedAmount = ISwapRouter(router).exactInputSingle(swapParams);
+        require((receivedAmount - debt) > 0 , "No profits gained");
+        currentBalance = _getBalance(options[optionId].counterAsset, address(this));
+        require((currentBalance - premium) > lastBalances[options[optionId].counterAsset], "No profits gained");
+        IERC20(options[optionId].counterAsset).approve(ADDRESSES_PROVIDER.getPool(), debt);
+        withdrawAllowance[options[optionId].counterAsset][options[optionId].participant] += (receivedAmount - debt);
         return true;
     }
 
@@ -130,4 +175,28 @@ contract OpWizFlashLoanWithKeepers is IERC165, OpWizSimple ,IOpWizChainlinkCompa
                interfaceId == this.executeOperation.selector;
 
     }
+
+    function _flashExercise(uint optionId) internal participated(optionId, true) expired(optionId, false){
+        require(!optionDetails[optionId].exercised, "D7");
+        optionDetails[optionId].exercised = true;
+        emit Exercise(options[optionId].participant, optionId);
+    }
+
+    function _getBalance(address token, address account) internal view returns(uint256 amount){
+        (bool success, bytes memory data) =
+        token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
+        require(success && data.length >= 32);
+        return abi.decode(data, (uint256));
+    }
+
+    function _getFlashLoan(        
+        uint optionId, 
+        address flashPool,   
+        uint16 referralCode,
+        bytes calldata params
+    ) 
+        external 
+        onlyParticipant(msg.sender, optionId)
+        expired(optionId, false)
+        rejectZeroAddress(flashPool){}
 }

@@ -9,7 +9,6 @@ interface IOpWizFlashLoanSimpleReceiver is IOpWizSimple, IFlashLoanSimpleReceive
     function flashExercise(
         uint optionId,
         address flashPool,
-        uint amount,
         uint16 referralCode,
         bytes calldata params
     ) external;

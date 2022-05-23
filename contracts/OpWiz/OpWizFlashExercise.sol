@@ -4,28 +4,38 @@ pragma solidity ^0.8.0;
 import "./IOpWizFlashLoanSimpleReceiver.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "./OpWizSimple.sol";
-import {IPoolAddressesProvider} from "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
-import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
+import { IPoolAddressesProvider } from "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import { IPool } from "@aave/core-v3/contracts/interfaces/IPool.sol";
+import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract OpWizFlashExercise is IERC165, OpWizSimple, IOpWizFlashLoanSimpleReceiver {
+
+    mapping(address => uint) private lastBalances;
 
     IPoolAddressesProvider public override ADDRESSES_PROVIDER;
     IPool public override POOL;
 
+    modifier onlyPool(){
+        require(msg.sender == address(POOL), "Only flash-pool allowed");
+        _;
+    }
+
     function flashExercise(
         uint optionId, 
         address flashPool, 
-        uint amount,  
         uint16 referralCode,
         bytes calldata params
     ) 
         external 
         onlyParticipant(msg.sender, optionId)
         expired(optionId, false)
-    {
-       ADDRESSES_PROVIDER = IPoolAddressesProvider(flashPool);
-       POOL = IPool(ADDRESSES_PROVIDER.getPool());
-       POOL.flashLoanSimple(address(this), options[optionId].colleteral, options[optionId].amountOfColleteral, params, referralCode);
+        rejectZeroAddress(flashPool)
+    {   
+        Option storage option = options[optionId];
+        lastBalances[option.counterAsset] = IERC20(option.counterAsset).balanceOf(address(this));
+        ADDRESSES_PROVIDER = IPoolAddressesProvider(flashPool);
+        POOL = IPool(ADDRESSES_PROVIDER.getPool());
+        POOL.flashLoanSimple(address(this), option.counterAsset, option.amountOfCA, params, referralCode);
     }
 
     /**
@@ -45,8 +55,39 @@ contract OpWizFlashExercise is IERC165, OpWizSimple, IOpWizFlashLoanSimpleReceiv
         uint256 premium,
         address initiator,
         bytes calldata params
-    ) external returns (bool){
+    ) external onlyPool() returns (bool){
         //implement the arbitrage here
+        (
+            uint optionId,
+            address router,
+            uint24 fee,
+            uint256 amountOutMinimum,
+            uint160 sqrtPriceLimitX96
+        
+        ) = abi.decode(params, (uint, address, uint24, uint256, uint160));
+        uint currentBalance = IERC20(options[optionId].counterAsset).balanceOf(address(this));
+        require((currentBalance - amount) >= lastBalances[options[optionId].counterAsset], "D20");
+        require(asset == options[optionId].counterAsset, "Assets does not match" );
+        require(amount >= options[optionId].amountOfCA, "D20");
+        lastBalances[options[optionId].counterAsset] = IERC20(options[optionId].counterAsset).balanceOf(address(this));
+        _flashExercise(optionId);
+        ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter.ExactInputSingleParams({
+            tokenIn: options[optionId].colleteral,
+            tokenOut: options[optionId].counterAsset, 
+            fee: fee, 
+            recipient: address(this), 
+            deadline: block.timestamp + 1, 
+            amountIn: options[optionId].amountOfColleteral, 
+            amountOutMinimum: amountOutMinimum, 
+            sqrtPriceLimitX96: sqrtPriceLimitX96
+        });
+
+        uint debt = amount + premium;
+        uint256 receivedAmount = ISwapRouter(router).exactInputSingle(swapParams);
+        require((receivedAmount - debt) > 0 , "No profits gained");
+        currentBalance = IERC20(options[optionId].counterAsset).balanceOf(address(this));
+        require(currentBalance > lastBalances[options[optionId].counterAsset], "No profits gained");
+        IERC20(options[optionId].counterAsset).approve(ADDRESSES_PROVIDER.getPool(), debt);
         return true;
     }
 
@@ -63,4 +104,9 @@ contract OpWizFlashExercise is IERC165, OpWizSimple, IOpWizFlashLoanSimpleReceiv
                interfaceId == this.executeOperation.selector;
     }
 
+    function _flashExercise(uint optionId) internal participated(optionId, true) expired(optionId, false){
+        require(!optionDetails[optionId].exercised, "D7");
+        optionDetails[optionId].exercised = true;
+        emit Exercise(options[optionId].participant, optionId);
+    }
 }
