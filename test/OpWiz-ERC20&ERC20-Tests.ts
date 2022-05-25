@@ -1,11 +1,14 @@
 import { expect } from "chai";
 import { Wallet } from "ethers";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { it } from "mocha";
 import { SimpleERC721, SimpleERC1155, SimpleERC20, OpWiz, SimpleERC721__factory, SimpleERC1155__factory, SimpleERC20__factory, OpWiz__factory } from "../typechain";
-import { moveBlocks } from "../utils/move-blocks";
+import { moveTime } from "../utils/move-time";
+import { developmentChains } from "../helper-hardhat-config";
  
-describe("OpWiz Tests: ERC20&ERC20 options", function () {
+(!developmentChains.includes(network.name))
+  ? describe.skip
+  :describe("OpWiz Tests: ERC20&ERC20 options", function () {
 
     let wallet: Wallet, acc1: Wallet, acc2: Wallet, erc20_t1: SimpleERC20,
      erc20_t2: SimpleERC20, erc721: SimpleERC721, erc1155: SimpleERC1155 , opWiz: OpWiz;
@@ -138,7 +141,7 @@ describe("OpWiz Tests: ERC20&ERC20 options", function () {
           let tx = await erc20_t2.connect(acc1).approve(opWiz.address, 30000);
           await tx.wait(1);
           await expect(opWiz.connect(wallet).refundColleteral(1)).to.emit(opWiz, "WithdrawColleteral").to.revertedWith("D4");
-          await moveBlocks(2000);
+          await moveTime(2000*86400);
           await expect(opWiz.connect(acc1).exerciseOption(1)).to.be.revertedWith("D9");
           await expect(opWiz.connect(wallet).refundColleteral(1)).to.emit(opWiz, "WithdrawColleteral").withArgs(wallet.address, 1, 50000);
           await expect(opWiz.connect(wallet).refundColleteral(1)).to.emit(opWiz, "WithdrawColleteral").withArgs(wallet.address, 1, 0);

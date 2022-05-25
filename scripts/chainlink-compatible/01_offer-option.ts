@@ -1,10 +1,10 @@
 import { BigNumberish, Contract } from "ethers";
 import { ethers, network } from "hardhat";
 import { Address } from "hardhat-deploy/types";
-import { OpWizChainlinkCompatible } from "../typechain";
-import { developmentChains } from "../helper-hardhat-config";
-import { ERC20__factory } from "../typechain/factories/ERC20__factory";
-import { ERC20 } from "../typechain/ERC20";
+import { OpWizChainlinkCompatible } from "../../typechain";
+import { developmentChains } from "../../helper-hardhat-config";
+import { ERC20__factory } from "../../typechain/factories/ERC20__factory";
+import { ERC20 } from "../../typechain/ERC20";
 import { parseEther } from "ethers/lib/utils";
 
 

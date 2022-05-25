@@ -19,6 +19,10 @@ type NetworkConfigMap = {
   [chainId: string]: NetworkConfigItem
 }
 
+export const MY_UNISWAP_POOL="0xDcb9fFDC449dE3f48ee0c760B974332291F327d1";
+export const UNISWAP_FACTORY= "0x1F98431c8aD98523631AE4a59f267346ea31F984";
+export const SWAPROUTER="0xE592427A0AEce92De3Edee1F18E0157C05861564";
+export const KOVAN_WETH="0xd0A1E359811322d97991E03f863a0C30C2cF029C";
 export const networkConfig: NetworkConfigMap = {
   default: {
     name: "hardhat",

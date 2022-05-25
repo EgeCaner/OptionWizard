@@ -1,9 +1,8 @@
 import { ethers, network } from "hardhat";
-import { OpWizChainlinkCompatible } from "../typechain";
-import { developmentChains } from "../helper-hardhat-config";
-import { ERC20__factory } from "../typechain/factories/ERC20__factory";
-import { ERC20 } from "../typechain/ERC20";
-
+import { OpWizChainlinkCompatible } from "../../typechain";
+import { developmentChains } from "../../helper-hardhat-config";
+import { ERC20__factory } from "../../typechain/factories/ERC20__factory";
+import { ERC20 } from "../../typechain/ERC20";
 
 export async function refundColleteral(optionId : number){
 

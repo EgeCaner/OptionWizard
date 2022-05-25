@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.0;
 
-import "./IOpWizChainlinkCompatible.sol";
+import "../OpWizSimple.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "./OpWizSimple.sol";
+import "../interfaces/IOpWizChainlinkCompatible.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "hardhat/console.sol";
 
 contract OpWizChainlinkCompatible is IERC165, OpWizSimple, IOpWizChainlinkCompatible { 
-    
+    using ECDSA for bytes;
+    using ECDSA for bytes32;
+
     function setPriceFeedAddress(uint optionId, address _priceFeedAddress) external override onlyParticipant(msg.sender, optionId){
         optionDetails[optionId].priceFeedAddress = _priceFeedAddress;
     }
@@ -30,13 +34,28 @@ contract OpWizChainlinkCompatible is IERC165, OpWizSimple, IOpWizChainlinkCompat
     * `abi.encode`.
     */
     function checkUpkeep(bytes calldata checkData) external view override returns (bool upkeepNeeded, bytes memory performData){
-        (uint optionId, int strikePrice) = abi.decode(checkData,(uint, int)); 
+        console.log("entering encoding");
+        (
+            uint optionId,
+            int strikePrice,
+            bytes memory sig
+        ) = abi.decode(checkData,(uint, int, bytes)); 
+        console.log("out encoding");
+        console.log("entering kecccak");
+        bytes32 hash_ = keccak256(abi.encode(optionId, strikePrice));
+        address signer = hash_.toEthSignedMessageHash().recover(sig);
+        console.log("out keccak");
+        console.log(signer);
+
+        //require(options[optionId].participant == ECDSA.recover(hash_, signature), "Params does not provided by option participator");
+        console.log("sigVerifies");
         (    /*uint80 roundID*/,
             int price, 
             /*uint startedAt*/,
             /*uint timeStamp*/,
             /*uint80 answeredInRound*/
         )= AggregatorV3Interface(optionDetails[optionId].priceFeedAddress).latestRoundData();
+
         return (price >= strikePrice , checkData);
     }
 
@@ -57,7 +76,12 @@ contract OpWizChainlinkCompatible is IERC165, OpWizSimple, IOpWizChainlinkCompat
     * validated against the contract's current state.
     */
     function performUpkeep(bytes calldata performData) external override {
-        (uint optionId, int strikePrice) = abi.decode(performData, (uint, int)); 
+        (
+            uint optionId,
+            int strikePrice,
+            bytes memory signature
+        ) = abi.decode(performData, (uint, int, bytes)); 
+
         (    /*uint80 roundID*/,
             int price,
             /*uint startedAt*/,
@@ -86,6 +110,10 @@ contract OpWizChainlinkCompatible is IERC165, OpWizSimple, IOpWizChainlinkCompat
         return interfaceId == this.supportsInterface.selector || 
                interfaceId == this.checkUpkeep.selector ^ this.performUpkeep.selector;
 
+    }
+
+    function verify(bytes memory message, bytes memory sig) external pure returns(address signer){
+        signer= message.toEthSignedMessageHash().recover(sig);
     }
 
 }

@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "contracts/OpWiz/IOpWiz.sol";
+import "./interfaces/IOpWiz.sol";
 import "hardhat/console.sol";
 
 /*
@@ -407,8 +407,8 @@ contract OpWiz is ERC165, IOpWiz {
             options[optionId].amountOfColleteral = amountOfColleteral;
             options[optionId].amountOfCA = amountOfCA;
             options[optionId].premiumAmount = premiumAmount;
-            optionDetails[optionId].optionExpiry = block.timestamp + optionExpiry;
-            optionDetails[optionId].offerEnd = block.timestamp + offerEnd;
+            optionDetails[optionId].optionExpiry = block.timestamp + (optionExpiry * 1 days);
+            optionDetails[optionId].offerEnd = block.timestamp + (offerEnd * 1 days);
             emit Offer(initiator, optionId, true);
     }
 

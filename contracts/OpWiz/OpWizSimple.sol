@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "./IOpWizSimple.sol";
+import "./interfaces/IOpWizSimple.sol";
 import {IPoolAddressesProvider} from "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 
@@ -96,8 +96,8 @@ contract OpWizSimple is IOpWizSimple {
         option.amountOfColleteral = amountOfColleteral;
         option.premiumAmount = premiumAmount;
         option.amountOfCA = amountOfCA;
-        optionDetails[index].offerEnd = block.timestamp + offerEnd;
-        optionDetails[index].optionExpiry = block.timestamp + optionExpiry;
+        optionDetails[index].offerEnd = block.timestamp + (offerEnd * 1 days);
+        optionDetails[index].optionExpiry = block.timestamp + (optionExpiry * 1 days);
         option.initiator = msg.sender;
         emit Offer(msg.sender, index, true);
     }
