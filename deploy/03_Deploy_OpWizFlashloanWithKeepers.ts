@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { developmentChains } from "../helper-hardhat-config";
+import { developmentChains, SWAPROUTER } from "../helper-hardhat-config";
 
 const deployFunction : DeployFunction  = async function(hre: HardhatRuntimeEnvironment){
     
@@ -10,7 +10,7 @@ const deployFunction : DeployFunction  = async function(hre: HardhatRuntimeEnvir
     log("Deploying OpWizChainlinkCompatible...");
     const opWizFlashLoanWithKeepersContract = await deploy("OpWizFlashLoanWithKeepers", {
         from: deployer,
-        args: [],
+        args: [SWAPROUTER],
         log: true,
         waitConfirmations: developmentChains.includes(network.name) ? 1 : 6
     });

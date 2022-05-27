@@ -7,6 +7,7 @@ interface IOpWizFlashExercise is IOpWizSimple {
 
     function flashExercise(
         uint optionId,
+        uint minAmount,
         bytes calldata params
     ) external;
 

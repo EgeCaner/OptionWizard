@@ -11,15 +11,22 @@ import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRou
 contract OpWizFlashLoanWithKeepers is IERC165, OpWizSimple, IOpWizChainlinkCompatible, IOpWizFlashExercise {
     mapping(address => uint) private lastBalances;
 
+    address immutable public swapRouter;
+
+    constructor(address _swapRouter){
+        swapRouter = _swapRouter;
+    }
+ 
     function flashExercise(
         uint optionId, 
+        uint minAmount,
         bytes calldata params
     ) 
         external 
         onlyParticipant(msg.sender, optionId)
         expired(optionId, false)
     {   
-       _flashExercise(optionId, params);
+       _flashExercise(optionId, minAmount, params);
     }
 
     function setPriceFeedAddress(uint optionId, address _priceFeedAddress) external override onlyParticipant(msg.sender, optionId){
@@ -44,7 +51,7 @@ contract OpWizFlashLoanWithKeepers is IERC165, OpWizSimple, IOpWizChainlinkCompa
     * `abi.encode`.
     */
     function checkUpkeep(bytes calldata checkData) external view override returns (bool upkeepNeeded, bytes memory performData){
-        (uint optionId, int strikePrice) = abi.decode(checkData,(uint, int)); 
+        (uint optionId, int strikePrice) = abi.decode(checkData[:64],(uint, int)); 
         (    /*uint80 roundID*/,
             int price, 
             /*uint startedAt*/,
@@ -71,7 +78,7 @@ contract OpWizFlashLoanWithKeepers is IERC165, OpWizSimple, IOpWizChainlinkCompa
     * validated against the contract's current state.
     */
     function performUpkeep(bytes calldata performData) external override {
-        (uint optionId, int strikePrice) = abi.decode(performData, (uint, int)); 
+       (uint optionId, uint strikePrice) = abi.decode(performData[:64],(uint, uint)); 
         (    /*uint80 roundID*/,
             int price,
             /*uint startedAt*/,
@@ -79,13 +86,22 @@ contract OpWizFlashLoanWithKeepers is IERC165, OpWizSimple, IOpWizChainlinkCompa
             /*uint80 answeredInRound*/
         )= AggregatorV3Interface(optionDetails[optionId].priceFeedAddress).latestRoundData();
         
-        require(price > strikePrice, "Option is OTM");
-        _exerciseOption(optionId);
-        IERC20(options[optionId].counterAsset).transferFrom(
+        require(uint(price) > strikePrice, "Option is OTM");
+        (bool isFlashExercise) = abi.decode(performData[64:66],(bool)); 
+        if (isFlashExercise){
+            _flashExercise(
+                optionId, 
+                (options[optionId].amountOfColleteral * strikePrice), 
+                performData[66:]
+            );
+        } else  {
+            IERC20(options[optionId].counterAsset).transferFrom(
             options[optionId].participant, 
             address(this), 
             options[optionId].amountOfCA
         );
+            _exerciseOption(optionId);
+        }
     }
 
      /**
@@ -102,37 +118,36 @@ contract OpWizFlashLoanWithKeepers is IERC165, OpWizSimple, IOpWizChainlinkCompa
 
     }
 
-    function _flashExercise(uint optionId, bytes calldata params) internal participated(optionId, true) expired(optionId, false){
+    function _flashExercise(uint optionId, uint minAmount, bytes calldata params) internal participated(optionId, true) expired(optionId, false){
         require(!optionDetails[optionId].exercised, "D7");
         optionDetails[optionId].exercised = true;
         Option storage option = options[optionId];
         (
-            address router,
             uint24 fee,
-            uint256 amountOutMinimum,
             uint160 sqrtPriceLimitX96
         
-        ) = abi.decode(params, (address, uint24, uint256, uint160));
+        ) = abi.decode(params, (uint24, uint160));
         lastBalances[option.counterAsset] = _getBalance(option.counterAsset, address(this));
         uint amountOfColleteral = option.amountOfColleteral;
         option.amountOfColleteral = 0;
+        IERC20(option.colleteral).approve(swapRouter, amountOfColleteral);
         ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter.ExactInputSingleParams({
             tokenIn: option.colleteral,
             tokenOut: option.counterAsset, 
             fee: fee, 
             recipient: address(this), 
-            deadline: block.timestamp + 1, 
+            deadline: block.timestamp + 10, 
             amountIn: amountOfColleteral, 
-            amountOutMinimum: amountOutMinimum, 
+            amountOutMinimum: minAmount, 
             sqrtPriceLimitX96: sqrtPriceLimitX96
         });
 
-        uint256 receivedAmount = ISwapRouter(router).exactInputSingle(swapParams);
+        uint256 receivedAmount = ISwapRouter(swapRouter).exactInputSingle(swapParams);
         require((receivedAmount - option.amountOfCA) > 0 , "No profits gained");
         uint256 currentBalance = _getBalance(option.counterAsset, address(this));
         require(currentBalance > lastBalances[option.counterAsset], "No profits gained");
-        emit Exercise(option.participant, optionId);
         withdrawAllowance[option.counterAsset][option.participant] += (receivedAmount - option.amountOfCA);
+        emit Exercise(option.participant, optionId);
     }
 
     function _getBalance(address token, address account) internal view returns(uint256 amount){

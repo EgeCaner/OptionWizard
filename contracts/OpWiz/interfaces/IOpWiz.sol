@@ -184,7 +184,7 @@ interface IOpWiz is IERC165, IERC1155Receiver, IERC721Receiver{
         uint amount
     ) external;
 
-     function setOptionParams(
+    function setOptionParams(
         uint optionId,
         uint amountOfColleteral,
         uint amountOfCA, 

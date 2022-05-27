@@ -19,6 +19,7 @@ type NetworkConfigMap = {
   [chainId: string]: NetworkConfigItem
 }
 
+export const SQRT_PRICE=2;
 export const MY_UNISWAP_POOL="0xDcb9fFDC449dE3f48ee0c760B974332291F327d1";
 export const UNISWAP_FACTORY= "0x1F98431c8aD98523631AE4a59f267346ea31F984";
 export const SWAPROUTER="0xE592427A0AEce92De3Edee1F18E0157C05861564";
